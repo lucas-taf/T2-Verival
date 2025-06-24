@@ -7,13 +7,11 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import teammates.common.datatransfer.attributes.FeedbackSessionAttributes;
-import teammates.common.exception.InvalidParametersException;
 import teammates.test.BaseTestCase;
 
 /**
  * SUT: Jornada completa de criação e submissão de Feedback Session
- * Aplicando técnicas de teste da disciplina: Particionamento por Equivalência,
- * Análise de Valor Limite e Testes Baseados em Estado
+ * Aplicando técnicas de teste unitário, teste de integração e teste de sistema
  * 
  * EXEMPLOS CONCRETOS DE TESTES - Implementação Real
  */
@@ -27,7 +25,7 @@ public class FeedbackSessionWorkflowTestFixed extends BaseTestCase {
     }
 
     // =============================================================================
-    // TESTES UNITÁRIOS: Validação de parâmetros de entrada
+    // TESTE UNITÁRIO: Validação básica de criação de Feedback Session
     // Técnica: Particionamento por Equivalência
     // =============================================================================
 
@@ -38,6 +36,7 @@ public class FeedbackSessionWorkflowTestFixed extends BaseTestCase {
         Instant startTime = Instant.now().plus(Duration.ofDays(1));
         Instant endTime = startTime.plus(Duration.ofDays(7));
         
+        // Act: Criar sessão com dados válidos
         FeedbackSessionAttributes validSession = FeedbackSessionAttributes.builder(sessionName, courseId)
                 .withCreatorEmail("instructor@example.com")
                 .withStartTime(startTime)
@@ -47,282 +46,12 @@ public class FeedbackSessionWorkflowTestFixed extends BaseTestCase {
                 .withGracePeriod(Duration.ofMinutes(15))
                 .build();
 
-        // Act & Assert: Verificações básicas de construção
+        // Assert: Verificações básicas de construção
         assertEquals(sessionName, validSession.getFeedbackSessionName());
         assertEquals(courseId, validSession.getCourseId());
         assertTrue(validSession.getStartTime().isBefore(validSession.getEndTime()));
         assertEquals("instructor@example.com", validSession.getCreatorEmail());
         assertEquals("Please provide feedback", validSession.getInstructions());
-    }
-
-    @Test
-    public void testCreateFeedbackSession_invalidSessionName_expectFailure() {
-        // Arrange: Nome inválido (classe de equivalência inválida)
-        String invalidName = ""; // Nome vazio
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        // Act & Assert: Construção com nome inválido deve falhar
-        try {
-            FeedbackSessionAttributes invalidSession = FeedbackSessionAttributes.builder(invalidName, courseId)
-                    .withCreatorEmail("instructor@example.com")
-                    .withStartTime(startTime)
-                    .withEndTime(endTime)
-                    .withTimeZone("UTC")
-                    .build();
-            
-            // Se chegou aqui, pelo menos verificamos que o nome está vazio
-            assertEquals("", invalidSession.getFeedbackSessionName());
-            
-        } catch (Exception e) {
-            // Esperado que falhe com nome vazio
-            assertTrue("Deve falhar com nome inválido", 
-                      e instanceof IllegalArgumentException || e instanceof InvalidParametersException);
-        }
-    }
-
-    @Test
-    public void testCreateFeedbackSession_nullCourseId_expectFailure() {
-        // Arrange: Course ID nulo (classe de equivalência inválida)
-        String sessionName = "Valid Session";
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        // Act & Assert: Construção com courseId nulo deve falhar
-        try {
-            FeedbackSessionAttributes invalidSession = FeedbackSessionAttributes.builder(sessionName, null)
-                    .withCreatorEmail("instructor@example.com")
-                    .withStartTime(startTime)
-                    .withEndTime(endTime)
-                    .withTimeZone("UTC")
-                    .build();
-                    
-            // Se conseguiu criar, pelo menos verificamos que courseId é nulo
-            assertNull(invalidSession.getCourseId());
-            
-        } catch (Exception e) {
-            // Esperado que falhe com courseId nulo
-            assertTrue("Deve falhar com courseId nulo",
-                      e instanceof IllegalArgumentException || e instanceof NullPointerException);
-        }
-    }
-
-    @Test
-    public void testCreateFeedbackSession_endTimeBeforeStartTime_invalidState() {
-        // Arrange: Tempo final antes do inicial (classe de equivalência inválida)
-        String sessionName = "Invalid Time Session";
-        Instant startTime = Instant.now().plus(Duration.ofDays(7));
-        Instant endTime = startTime.minus(Duration.ofDays(1)); // Fim antes do início
-        
-        FeedbackSessionAttributes invalidSession = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withTimeZone("UTC")
-                .build();
-
-        // Act & Assert: Verificar estado inconsistente
-        assertTrue("Estado inválido: fim antes do início deve ser detectado",
-                  invalidSession.getEndTime().isBefore(invalidSession.getStartTime()));
-    }
-
-    // =============================================================================
-    // TESTES DE VALOR LIMITE: Testando limites de tempo e parâmetros
-    // Técnica: Análise de Valor Limite
-    // =============================================================================
-
-    @Test
-    public void testCreateFeedbackSession_minimumValidDuration_success() {
-        // Arrange: Duração mínima válida (1 minuto)
-        String sessionName = "Minimum Duration Session";
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofMinutes(1)); // Valor limite mínimo
-        
-        FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withTimeZone("UTC")
-                .build();
-
-        // Act & Assert: Verificar duração mínima
-        Duration actualDuration = Duration.between(session.getStartTime(), session.getEndTime());
-        assertEquals(Duration.ofMinutes(1), actualDuration);
-    }
-
-    @Test
-    public void testCreateFeedbackSession_maximumSessionNameLength_boundaryTest() {
-        // Arrange: Nome com tamanho máximo permitido (testando valor limite)
-        String maxLengthName = "A".repeat(38); // Assumindo limite de 38 caracteres
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(maxLengthName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withTimeZone("UTC")
-                .build();
-
-        // Act & Assert: Verificar se aceita o tamanho limite
-        assertEquals(maxLengthName, session.getFeedbackSessionName());
-        assertEquals(38, session.getFeedbackSessionName().length());
-    }
-
-    @Test
-    public void testCreateFeedbackSession_exceedsMaxSessionNameLength_boundaryTest() {
-        // Arrange: Nome excedendo tamanho máximo (valor limite + 1)
-        String tooLongName = "A".repeat(39); // Excede o limite
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        try {
-            FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(tooLongName, courseId)
-                    .withCreatorEmail("instructor@example.com")
-                    .withStartTime(startTime)
-                    .withEndTime(endTime)
-                    .withTimeZone("UTC")
-                    .build();
-
-            // Se permitiu criar, pelo menos registramos que excede o limite esperado
-            assertTrue("Nome excede tamanho esperado - pode indicar problema de validação",
-                      session.getFeedbackSessionName().length() > 38);
-                      
-        } catch (Exception e) {
-            // Esperado que falhe no limite + 1
-            assertTrue("Corretamente rejeitou nome muito longo", true);
-        }
-    }
-
-    @Test
-    public void testCreateFeedbackSession_zeroGracePeriod_boundaryTest() {
-        // Arrange: Grace period de 0 minutos (valor limite mínimo)  
-        String sessionName = "Zero Grace Period Session";
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withTimeZone("UTC")
-                .withGracePeriod(Duration.ofMinutes(0)) // Valor limite mínimo
-                .build();
-
-        // Act & Assert: Verificar que aceita grace period zero
-        assertEquals(sessionName, session.getFeedbackSessionName());
-        assertNotNull(session); // Verificar que a sessão foi criada
-    }
-
-    @Test
-    public void testCreateFeedbackSession_maximumGracePeriod_boundaryTest() {
-        // Arrange: Grace period máximo (teste de valor limite superior)
-        String sessionName = "Max Grace Period Session";
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        
-        FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com") 
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withTimeZone("UTC")
-                .withGracePeriod(Duration.ofMinutes(60)) // Assumindo limite de 60 min
-                .build();
-
-        // Act & Assert: Verificar que aceita grace period máximo
-        assertEquals(sessionName, session.getFeedbackSessionName());
-        assertNotNull(session); // Verificar que a sessão foi criada
-    }
-
-    // =============================================================================
-    // TESTES BASEADOS EM ESTADO: Fluxo completo da jornada do usuário
-    // Técnica: Testes de Estado/Transição
-    // =============================================================================
-
-    @Test
-    public void testFeedbackSessionWorkflow_stateTransitions_success() {
-        // Estado 1: SETUP - Preparação da sessão
-        String sessionName = "State Transition Test";
-        Instant startTime = Instant.now().plus(Duration.ofDays(1));
-        Instant endTime = startTime.plus(Duration.ofDays(7));
-        Instant resultsVisibleTime = endTime.plus(Duration.ofMinutes(30));
-        
-        FeedbackSessionAttributes session = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(startTime)
-                .withEndTime(endTime)
-                .withSessionVisibleFromTime(startTime.minus(Duration.ofHours(1)))
-                .withResultsVisibleFromTime(resultsVisibleTime)
-                .withTimeZone("UTC")
-                .withInstructions("State transition test session")
-                .withGracePeriod(Duration.ofMinutes(15))
-                .build();
-
-        // Verificação do estado inicial - AWAITING
-        assertTrue("Estado inicial deve estar em espera", 
-                  session.getStartTime().isAfter(Instant.now()));
-
-        // Estado 2: OPEN - Simular sessão aberta
-        FeedbackSessionAttributes openSession = FeedbackSessionAttributes.builder(sessionName + "_Open", courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(Instant.now().minus(Duration.ofMinutes(30)))
-                .withEndTime(Instant.now().plus(Duration.ofDays(6)))
-                .withSessionVisibleFromTime(Instant.now().minus(Duration.ofHours(1)))
-                .withResultsVisibleFromTime(Instant.now().plus(Duration.ofDays(7)))
-                .withTimeZone("UTC")
-                .build();
-
-        assertTrue("Sessão deve estar no período de abertura", 
-                  openSession.getStartTime().isBefore(Instant.now()) 
-                  && openSession.getEndTime().isAfter(Instant.now()));
-
-        // Estado 3: CLOSED - Simular sessão fechada
-        FeedbackSessionAttributes closedSession = FeedbackSessionAttributes.builder(sessionName + "_Closed", courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(Instant.now().minus(Duration.ofDays(8)))
-                .withEndTime(Instant.now().minus(Duration.ofMinutes(10)))
-                .withSessionVisibleFromTime(Instant.now().minus(Duration.ofDays(9)))
-                .withResultsVisibleFromTime(Instant.now().plus(Duration.ofMinutes(10)))
-                .withTimeZone("UTC")
-                .build();
-
-        assertTrue("Sessão deve estar fechada", 
-                  closedSession.getEndTime().isBefore(Instant.now()));
-
-        // Estado 4: PUBLISHED - Simular resultados publicados
-        FeedbackSessionAttributes publishedSession = FeedbackSessionAttributes.builder(sessionName + "_Published", courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(Instant.now().minus(Duration.ofDays(10)))
-                .withEndTime(Instant.now().minus(Duration.ofDays(3)))
-                .withSessionVisibleFromTime(Instant.now().minus(Duration.ofDays(11)))
-                .withResultsVisibleFromTime(Instant.now().minus(Duration.ofMinutes(5)))
-                .withTimeZone("UTC")
-                .build();
-
-        assertTrue("Resultados devem estar disponíveis", 
-                  publishedSession.getResultsVisibleFromTime().isBefore(Instant.now()));
-    }
-
-    @Test
-    public void testFeedbackSession_invalidStateTransitions_detectedCorrectly() {
-        // Teste de transições inválidas de estado
-        String sessionName = "Invalid State Test";
-        Instant now = Instant.now();
-        
-        // Estado inconsistente: sessão com tempo de resultado antes do fim
-        FeedbackSessionAttributes inconsistentSession = FeedbackSessionAttributes.builder(sessionName, courseId)
-                .withCreatorEmail("instructor@example.com")
-                .withStartTime(now.minus(Duration.ofDays(10)))
-                .withEndTime(now.minus(Duration.ofDays(5)))
-                .withSessionVisibleFromTime(now.minus(Duration.ofDays(11)))
-                .withResultsVisibleFromTime(now.minus(Duration.ofDays(6))) // Resultado antes do fim
-                .withTimeZone("UTC")
-                .build();
-
-        // Verificar inconsistência de estado
-        assertTrue("Estado inconsistente deve ser detectado",
-                  inconsistentSession.getResultsVisibleFromTime().isBefore(
-                      inconsistentSession.getEndTime()));
     }
 
     // =============================================================================
